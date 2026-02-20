@@ -1,0 +1,150 @@
+DOCUMENTACIÓN TÉCNICA DETALLADA
+Proyecto: Cifrado y Descifrado César / Atbash
+Versión de identificadores: NEX-01 ... NEX-20
+
+=================================================================
+A) app.py (backend, lógica principal)
+=================================================================
+
+NEX-01 (inicio de app)
+- Importa Flask, render_template y request desde flask.
+- Crea la instancia principal de la aplicación: app = Flask(__name__).
+- Define PRINTABLE_ASCII con los caracteres ASCII imprimibles (32 a 126).
+- Efecto práctico: deja un alfabeto por defecto listo para usar en cifrado/descifrado.
+
+NEX-02 (normalización de charset)
+- Recibe un string (charset) con los caracteres elegidos por el usuario.
+- Inicializa seen (set) para registrar caracteres ya vistos.
+- Inicializa unique (lista) para conservar el orden de aparición.
+- Recorre carácter por carácter:
+  - Si no estaba en seen, lo agrega a seen y a unique.
+  - Si ya estaba, lo ignora.
+- Devuelve ''.join(unique).
+- Efecto práctico: evita duplicados en el alfabeto sin perder orden.
+
+NEX-03 (algoritmo César)
+- Firma: caesar_cipher(text, charset, shift, decrypt=False).
+- Si charset está vacío, devuelve text sin cambios.
+- size = len(charset): tamaño del alfabeto activo.
+- shift = shift % size: normaliza desplazamientos grandes/negativos.
+- Si decrypt=True, invierte el desplazamiento con shift = -shift.
+- Recorre el texto:
+  - Si el carácter está en charset:
+    - Obtiene índice original con charset.index(char).
+    - Calcula nuevo índice circular: (index + shift) % size.
+    - Agrega el carácter transformado.
+  - Si no está en charset, lo conserva igual.
+- Devuelve ''.join(result).
+- Efecto práctico: cifra o descifra según el desplazamiento y operación.
+
+NEX-04 (algoritmo Atbash)
+- Firma: atbash_cipher(text, charset).
+- Si charset está vacío, devuelve text sin cambios.
+- size = len(charset).
+- Recorre el texto:
+  - Si el carácter está en charset:
+    - Obtiene índice normal.
+    - Calcula índice espejo: size - 1 - index.
+    - Agrega el carácter espejo.
+  - Si no está en charset, lo conserva.
+- Devuelve ''.join(result).
+- Efecto práctico: aplica sustitución simétrica (cifrar y descifrar son iguales).
+
+NEX-05 (ruta principal /)
+- Define endpoint '/' con métodos GET y POST.
+- Inicializa valores por defecto:
+  - module='caesar', operation='encrypt', shift=3,
+  - charset=PRINTABLE_ASCII, text/output/error/info vacíos.
+- Si request.method == 'POST':
+  - Lee campos del formulario: module, operation, text, charset.
+  - Normaliza charset con normalize_charset.
+  - Si hubo duplicados removidos, coloca mensaje en info.
+  - Si charset queda vacío, coloca error y no procesa cifrado.
+  - Si módulo es 'caesar':
+    - Lee shift, limpia espacios y convierte a int.
+    - Si falla conversión, registra error de llave inválida.
+    - Si es válido, llama caesar_cipher con decrypt según operation.
+  - Si módulo es 'atbash':
+    - Llama atbash_cipher.
+  - Si módulo no coincide, marca error de módulo no válido.
+- Retorna render_template('index.html', ...)
+  enviando todas las variables necesarias a la plantilla.
+- Efecto práctico: controla flujo completo de la página y lógica del formulario.
+
+NEX-06 (arranque local)
+- Evalúa if __name__ == '__main__':
+- Ejecuta app.run(debug=True).
+- Efecto práctico: levanta servidor de desarrollo local.
+
+
+=================================================================
+B) templates/index.html (vista + interacción)
+=================================================================
+
+NEX-07 (estructura de página)
+- Define HTML5, idioma español, metadatos de viewport y codificación UTF-8.
+- Carga styles.css desde Flask con url_for('static', ...).
+- Abre contenedor principal con título y subtítulo.
+- Efecto práctico: base visual y semántica de la interfaz.
+
+NEX-08 (formulario principal)
+- Crea formulario POST con clase panel.
+- Sección Módulo:
+  - select module con opciones César y Atbash.
+  - Mantiene selección previa con condición Jinja selected.
+- Sección Operación:
+  - select operation con Cifrar/Descifrar.
+  - Nota visible para Atbash (simétrico).
+- Sección Llave César:
+  - input numérico shift, persistiendo valor actual.
+- Sección Conjunto de caracteres:
+  - textarea charset con valor actual.
+  - botón load-ascii para cargar ASCII imprimible.
+  - texto de ayuda sobre qué se transforma.
+- Sección Texto de entrada:
+  - textarea text con persistencia de contenido.
+- Botón final submit: Procesar.
+- Efecto práctico: captura todos los parámetros necesarios para cifrar/descifrar.
+
+NEX-09 (mensajes backend)
+- Bloque condicional de error: muestra sección roja si existe error.
+- Bloque condicional de info: muestra sección informativa si existe info.
+- Efecto práctico: feedback claro para validaciones y normalizaciones.
+
+NEX-10 (resultado)
+- Si output existe, muestra panel de resultado.
+- Incluye textarea readonly con texto procesado.
+- Incluye botón use-as-input para reutilizar resultado.
+- Efecto práctico: facilita cadenas de operaciones consecutivas.
+
+NEX-11 (puente backend -> JS)
+- Inserta script type="application/json" con printable_ascii serializado.
+- Efecto práctico: entrega dato seguro desde Flask a JavaScript sin hardcode.
+
+NEX-12 (referencias DOM)
+- Obtiene referencias con document.getElementById para:
+  module, shift-row, load-ascii, charset, text, operation, output, use-as-input.
+- Lee printableAsciiData y lo parsea con JSON.parse.
+- Efecto práctico: prepara variables para manipulación de interfaz.
+
+NEX-13 (toggle de llave)
+- Define función toggleShiftInput().
+- Si módulo es caesar, muestra fila de shift en display grid.
+- Si no, oculta la fila.
+- Registra listener change en moduleSelect.
+- Ejecuta una llamada inicial para estado correcto al cargar.
+- Efecto práctico: evita mostrar llave cuando no aplica.
+
+NEX-14 (botón cargar ASCII)
+- Registra click en loadAsciiButton.
+- Copia printableAscii al textarea charset.
+- Efecto práctico: setea alfabeto estándar con un clic.
+
+NEX-15 (usar resultado como entrada)
+- Verifica que existan botón y output (bloque condicional).
+- En click:
+  - Copia output al textarea de entrada.
+  - Alterna operación encrypt <-> decrypt.
+  - Hace focus sobre textarea de entrada.
+- Efecto práctico: agiliza pruebas de cifrado y descifrado encadenado.
+

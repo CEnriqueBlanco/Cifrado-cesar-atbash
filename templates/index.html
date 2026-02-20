@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cifrado César y Atbash</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <!-- NEX-07 -->
+    <main class="container">
+        <h1>Cifrado y Descifrado (César / Atbash)</h1>
+        <p class="subtitle">Basado en ASCII y con conjunto de caracteres configurable.</p>
+
+        <!-- NEX-08 -->
+        <form method="post" class="panel">
+            <div class="row">
+                <label for="module">Módulo:</label>
+                <select id="module" name="module">
+                    <option value="caesar" {% if module == 'caesar' %}selected{% endif %}>César</option>
+                    <option value="atbash" {% if module == 'atbash' %}selected{% endif %}>Atbash</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label for="operation">Operación:</label>
+                <select id="operation" name="operation">
+                    <option value="encrypt" {% if operation == 'encrypt' %}selected{% endif %}>Cifrar</option>
+                    <option value="decrypt" {% if operation == 'decrypt' %}selected{% endif %}>Descifrar</option>
+                </select>
+                <small>En Atbash, cifrar y descifrar son iguales.</small>
+            </div>
+
+            <div class="row" id="shift-row">
+                <label for="shift">Llave César (desplazamiento):</label>
+                <input id="shift" name="shift" type="number" value="{{ shift }}">
+            </div>
+
+            <div class="row">
+                <label for="charset">Conjunto de caracteres:</label>
+                <textarea id="charset" name="charset" rows="4">{{ charset }}</textarea>
+                <button type="button" id="load-ascii" class="secondary">Cargar ASCII imprimible (32-126)</button>
+                <small>Solo se transforman los caracteres incluidos aquí.</small>
+            </div>
+
+            <div class="row">
+                <label for="text">Texto de entrada:</label>
+                <textarea id="text" name="text" rows="6" placeholder="Escribe aquí...">{{ text }}</textarea>
+            </div>
+
+            <button type="submit" class="primary">Procesar</button>
+        </form>
+
+        <!-- NEX-09 -->
+        {% if error %}
+            <section class="message error">{{ error }}</section>
+        {% endif %}
+
+        {% if info %}
+            <section class="message info">{{ info }}</section>
+        {% endif %}
+
+        {% if output %}
+            <!-- NEX-10 -->
+            <section class="result panel">
+                <h2>Resultado</h2>
+                <textarea id="output" rows="6" readonly>{{ output }}</textarea>
+                <button type="button" id="use-as-input" class="secondary">Usar resultado como entrada</button>
+            </section>
+        {% endif %}
+    </main>
+
+    <!-- NEX-11 -->
+    <script id="printable-ascii-data" type="application/json">{{ printable_ascii | tojson }}</script>
+
+    <script>
+        // NEX-12
+        const moduleSelect = document.getElementById('module');
+        const shiftRow = document.getElementById('shift-row');
+        const loadAsciiButton = document.getElementById('load-ascii');
+        const charsetInput = document.getElementById('charset');
+        const textInput = document.getElementById('text');
+        const operationSelect = document.getElementById('operation');
+        const outputInput = document.getElementById('output');
+        const useAsInputButton = document.getElementById('use-as-input');
+        const printableAsciiData = document.getElementById('printable-ascii-data');
+        const printableAscii = printableAsciiData ? JSON.parse(printableAsciiData.textContent) : '';
+
+        // NEX-13
+        function toggleShiftInput() {
+            shiftRow.style.display = moduleSelect.value === 'caesar' ? 'grid' : 'none';
+        }
+
+        moduleSelect.addEventListener('change', toggleShiftInput);
+        toggleShiftInput();
+
+        // NEX-14
+        loadAsciiButton.addEventListener('click', () => {
+            charsetInput.value = printableAscii;
+        });
+
+        // NEX-15
+        if (useAsInputButton && outputInput) {
+            useAsInputButton.addEventListener('click', () => {
+                textInput.value = outputInput.value;
+                if (operationSelect.value === 'encrypt') {
+                    operationSelect.value = 'decrypt';
+                } else {
+                    operationSelect.value = 'encrypt';
+                }
+                textInput.focus();
+            });
+        }
+    </script>
+</body>
+</html>

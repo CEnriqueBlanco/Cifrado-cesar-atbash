@@ -1,0 +1,106 @@
+/* NEX-16 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f5f7;
+    color: #222;
+}
+
+.container {
+    max-width: 900px;
+    margin: 32px auto;
+    padding: 0 16px;
+}
+
+h1 {
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    margin-top: 0;
+    color: #555;
+}
+
+/* NEX-17 */
+.panel {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    margin-bottom: 16px;
+}
+
+.row {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+label {
+    font-weight: 600;
+}
+
+/* NEX-18 */
+input,
+select,
+textarea,
+button {
+    font: inherit;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #c9ccd1;
+    border-radius: 8px;
+}
+
+textarea {
+    resize: vertical;
+}
+
+button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+
+button.primary {
+    background: #1f6feb;
+    color: #fff;
+}
+
+button.secondary {
+    background: #e9ecef;
+    color: #222;
+    width: fit-content;
+}
+
+/* NEX-19 */
+.message {
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.message.error {
+    background: #ffe3e3;
+    color: #8a1f11;
+}
+
+.message.info {
+    background: #e7f5ff;
+    color: #0b4f8a;
+}
+
+/* NEX-20 */
+.result h2 {
+    margin-top: 0;
+}
