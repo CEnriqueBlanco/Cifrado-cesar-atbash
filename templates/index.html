@@ -4,51 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cifrado César y Atbash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <!-- NEX-07 -->
     <main class="container">
-        <h1>Cifrado y Descifrado (César / Atbash)</h1>
-        <p class="subtitle">Basado en ASCII y con conjunto de caracteres configurable.</p>
-
         <!-- NEX-08 -->
-        <form method="post" class="panel">
-            <div class="row">
-                <label for="module">Módulo:</label>
-                <select id="module" name="module">
-                    <option value="caesar" {% if module == 'caesar' %}selected{% endif %}>César</option>
-                    <option value="atbash" {% if module == 'atbash' %}selected{% endif %}>Atbash</option>
-                </select>
-            </div>
+        <form method="post" class="panel app-grid">
+            <section class="panel-sub card-config">
+                <h2>1) Configuracion</h2>
 
-            <div class="row">
-                <label for="operation">Operación:</label>
-                <select id="operation" name="operation">
-                    <option value="encrypt" {% if operation == 'encrypt' %}selected{% endif %}>Cifrar</option>
-                    <option value="decrypt" {% if operation == 'decrypt' %}selected{% endif %}>Descifrar</option>
-                </select>
-                <small>En Atbash, cifrar y descifrar son iguales.</small>
-            </div>
+                <div class="row">
+                    <label for="module">Modulo</label>
+                    <select id="module" name="module">
+                        <option value="caesar" {% if module == 'caesar' %}selected{% endif %}>Cesar</option>
+                        <option value="atbash" {% if module == 'atbash' %}selected{% endif %}>Atbash</option>
+                    </select>
+                </div>
 
-            <div class="row" id="shift-row">
-                <label for="shift">Llave César (desplazamiento):</label>
-                <input id="shift" name="shift" type="number" value="{{ shift }}">
-            </div>
+                <div class="row">
+                    <label for="operation">Operacion</label>
+                    <select id="operation" name="operation">
+                        <option value="encrypt" {% if operation == 'encrypt' %}selected{% endif %}>Cifrar</option>
+                        <option value="decrypt" {% if operation == 'decrypt' %}selected{% endif %}>Descifrar</option>
+                        <option value="bruteforce_200" id="bruteforce-option" {% if operation == 'bruteforce_200' %}selected{% endif %}>Probar {{ charset | length }} desplazamientos</option>
+                        <option value="detect" {% if operation == 'detect' %}selected{% endif %}>Identificar cifrado</option>
+                        <option value="detect_auto_charset" {% if operation == 'detect_auto_charset' %}selected{% endif %}>Identificar sin charset (auto)</option>
+                    </select>
+                    <small>Atbash es simetrico. El modo auto prueba varios charsets comunes.</small>
+                </div>
 
-            <div class="row">
-                <label for="charset">Conjunto de caracteres:</label>
-                <textarea id="charset" name="charset" rows="4">{{ charset }}</textarea>
-                <button type="button" id="load-ascii" class="secondary">Cargar ASCII imprimible (32-126)</button>
-                <small>Solo se transforman los caracteres incluidos aquí.</small>
-            </div>
+                <div class="row" id="shift-row">
+                    <label for="shift">Llave Cesar</label>
+                    <input id="shift" name="shift" type="number" value="{{ shift }}">
+                </div>
 
-            <div class="row">
-                <label for="text">Texto de entrada:</label>
-                <textarea id="text" name="text" rows="6" placeholder="Escribe aquí...">{{ text }}</textarea>
-            </div>
+                <div class="row">
+                    <label for="charset">Conjunto de caracteres</label>
+                    <textarea id="charset" name="charset" rows="4">{{ charset }}</textarea>
+                    <div class="inline-actions">
+                        <button type="button" id="load-ascii" class="secondary">Usar ASCII imprimible</button>
+                    </div>
+                </div>
+            </section>
 
-            <button type="submit" class="primary">Procesar</button>
+            <section class="panel-sub card-text">
+                <h2>2) Texto de entrada</h2>
+                <div class="row">
+                    <label for="text">Entrada</label>
+                    <textarea id="text" name="text" rows="11" placeholder="Escribe o pega aqui tu texto...">{{ text }}</textarea>
+                </div>
+                <button type="submit" class="primary">Procesar</button>
+            </section>
         </form>
 
         <!-- NEX-09 -->
@@ -60,12 +70,142 @@
             <section class="message info">{{ info }}</section>
         {% endif %}
 
-        {% if output %}
+        {% if output or brute_rows %}
             <!-- NEX-10 -->
             <section class="result panel">
-                <h2>Resultado</h2>
-                <textarea id="output" rows="6" readonly>{{ output }}</textarea>
-                <button type="button" id="use-as-input" class="secondary">Usar resultado como entrada</button>
+                {% if brute_rows %}
+                    <div class="result-header">
+                        <h2>3) Desplazamientos {{ brute_start }} - {{ brute_end }}</h2>
+                        <span class="badge">Tabla de analisis</span>
+                    </div>
+
+                    <div class="bruteforce-wrap" role="region" aria-label="Resultados de desplazamientos">
+                        <table class="bruteforce-table">
+                            <thead>
+                                <tr>
+                                    <th>Desplazamiento</th>
+                                    <th>Texto descifrado</th>
+                                    <th>Texto normal</th>
+                                    <th>Contiene "punto/puntos"</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in brute_rows %}
+                                    <tr class="{% if row.has_focus_word %}focus-word-row{% endif %}">
+                                        <td>{{ row.shift }}</td>
+                                        <td class="{% if row.likely_plain %}likely-plain{% endif %}">{{ row.decrypted }}</td>
+                                        <td>{% if row.likely_plain %}Si ({{ row.hits }} coincidencias){% else %}No{% endif %}</td>
+                                        <td>{% if row.has_focus_word %}Si ({{ row.focus_hits }}){% else %}No{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <form method="post" class="next-batch-form">
+                        <input type="hidden" name="module" value="{{ module }}">
+                        <input type="hidden" name="operation" value="bruteforce_200">
+                        <input type="hidden" name="shift" value="{{ shift }}">
+                        <textarea name="charset" class="hidden-field">{{ charset }}</textarea>
+                        <textarea name="text" class="hidden-field">{{ text }}</textarea>
+                        <input type="hidden" name="brute_start" value="{{ brute_next_start }}">
+                        <button type="submit" class="secondary">Generar otros {{ charset_size }} desplazamientos ({{ brute_next_start }}-{{ brute_next_start + charset_size - 1 }})</button>
+                    </form>
+                {% else %}
+                    <div class="result-header">
+                        <h2>3) Resultado</h2>
+                        <span class="badge">Salida directa</span>
+                    </div>
+                    {% if operation in ['detect', 'detect_auto_charset'] and detect_sections %}
+                        <section class="detect-highlight" aria-label="Resultado de deteccion">
+                            {% for section in detect_sections %}
+                                <article class="detect-item">
+                                    <h3>{{ section.label }}</h3>
+                                    <p>{{ section.value }}</p>
+                                </article>
+                            {% endfor %}
+                        </section>
+
+                        {% if operation == 'detect_auto_charset' and auto_candidates %}
+                            <section class="auto-top panel-sub" aria-label="Top 5 candidatos">
+                                <h3>Top 5 candidatos (modo auto)</h3>
+                                <div class="bruteforce-wrap">
+                                    <table class="bruteforce-table auto-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Método</th>
+                                                <th>Charset</th>
+                                                <th>Shift</th>
+                                                <th>Puntuación</th>
+                                                <th>Texto sugerido</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for candidate in auto_candidates %}
+                                                <tr class="{% if loop.index == 1 %}top-candidate{% endif %}">
+                                                    <td>{{ loop.index }}</td>
+                                                    <td>{{ candidate.method }}</td>
+                                                    <td>{{ candidate.charset_name }} ({{ candidate.charset_len }})</td>
+                                                    <td>{{ candidate.shift }}</td>
+                                                    <td>{{ candidate.score }}</td>
+                                                    <td>{{ candidate.text }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        {% endif %}
+
+                        <textarea id="detect-output" class="hidden-field" readonly>{{ output }}</textarea>
+                        <div class="detect-actions">
+                            <button type="button" id="copy-detect" class="secondary">Copiar analisis</button>
+                            <form id="brute-ajax-form" class="brute-from-detect-form">
+                                <input type="hidden" name="module" value="{{ module }}">
+                                <input type="hidden" name="operation" value="{{ operation }}">
+                                <input type="hidden" name="add_brute" value="1">
+                                <input type="hidden" name="shift" value="{{ shift }}">
+                                <textarea name="charset" class="hidden-field">{{ charset }}</textarea>
+                                <textarea name="text" class="hidden-field">{{ text }}</textarea>
+                                <button type="submit" id="brute-from-detect-btn" class="secondary">Probar {{ charset | length }} desplazamientos</button>
+                            </form>
+                        </div>
+
+                        {% if brute_rows %}
+                        <div class="brute-from-detect-result">
+                            <div class="result-header">
+                                <h3>Tabla de desplazamientos {{ brute_start }} - {{ brute_end }}</h3>
+                            </div>
+                            <div class="bruteforce-wrap" role="region" aria-label="Resultados de desplazamientos">
+                                <table class="bruteforce-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Desplazamiento</th>
+                                            <th>Texto descifrado</th>
+                                            <th>Texto normal</th>
+                                            <th>Contiene "punto/puntos"</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in brute_rows %}
+                                            <tr class="{% if row.has_focus_word %}focus-word-row{% endif %}">
+                                                <td>{{ row.shift }}</td>
+                                                <td class="{% if row.likely_plain %}likely-plain{% endif %}">{{ row.decrypted }}</td>
+                                                <td>{% if row.likely_plain %}Si ({{ row.hits }} coincidencias){% else %}No{% endif %}</td>
+                                                <td>{% if row.has_focus_word %}Si ({{ row.focus_hits }}){% else %}No{% endif %}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <textarea id="output" rows="8" readonly>{{ output }}</textarea>
+                        <button type="button" id="use-as-input" class="secondary">Usar resultado como entrada</button>
+                    {% endif %}
+                {% endif %}
             </section>
         {% endif %}
     </main>
@@ -82,21 +222,43 @@
         const textInput = document.getElementById('text');
         const operationSelect = document.getElementById('operation');
         const outputInput = document.getElementById('output');
+        const detectOutput = document.getElementById('detect-output');
+        const copyDetectButton = document.getElementById('copy-detect');
         const useAsInputButton = document.getElementById('use-as-input');
         const printableAsciiData = document.getElementById('printable-ascii-data');
         const printableAscii = printableAsciiData ? JSON.parse(printableAsciiData.textContent) : '';
 
         // NEX-13
         function toggleShiftInput() {
-            shiftRow.style.display = moduleSelect.value === 'caesar' ? 'grid' : 'none';
+            const needsShift = moduleSelect.value === 'caesar' && ['encrypt', 'decrypt'].includes(operationSelect.value);
+            shiftRow.style.display = needsShift ? 'grid' : 'none';
         }
 
         moduleSelect.addEventListener('change', toggleShiftInput);
+        operationSelect.addEventListener('change', toggleShiftInput);
         toggleShiftInput();
 
-        // NEX-14
+        // NEX-14 - Actualizar texto de opción brute force dinámicamente
+        const bruteforceOption = document.getElementById('bruteforce-option');
+        
+        function updateBruteforceOptionText() {
+            const charsetSize = charsetInput.value.length;
+            bruteforceOption.textContent = `Probar ${charsetSize} desplazamientos`;
+            
+            // Si existe el botón en la pantalla de detect, actualizar también
+            const bruteBtn = document.getElementById('brute-from-detect-btn');
+            if (bruteBtn) {
+                bruteBtn.textContent = `Probar ${charsetSize} desplazamientos`;
+            }
+        }
+        
+        charsetInput.addEventListener('change', updateBruteforceOptionText);
+        charsetInput.addEventListener('input', updateBruteforceOptionText);
+
+        // NEX-14B - Actualizar cuando se carga ASCII imprimible
         loadAsciiButton.addEventListener('click', () => {
             charsetInput.value = printableAscii;
+            updateBruteforceOptionText();
         });
 
         // NEX-15
@@ -110,6 +272,119 @@
                 }
                 textInput.focus();
             });
+        }
+
+        if (copyDetectButton && detectOutput) {
+            copyDetectButton.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(detectOutput.value);
+                    copyDetectButton.textContent = 'Analisis copiado';
+                } catch (_) {
+                    copyDetectButton.textContent = 'No se pudo copiar';
+                }
+            });
+        }
+
+        // NEX-16 - Brute force desde detect: agregar tabla sin recargar
+        const bruteForm = document.getElementById('brute-ajax-form');
+        const bruteBtn = document.getElementById('brute-from-detect-btn');
+        
+        if (bruteForm && bruteBtn) {
+            bruteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData(bruteForm);
+                const charsetSize = formData.get('charset').length;
+                
+                bruteBtn.textContent = 'Generando...';
+                bruteBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+                    
+                    if (!data.success || !data.brute_rows || data.brute_rows.length === 0) {
+                        throw new Error('No hay filas de brute force en la respuesta');
+                    }
+
+                    // Construir tabla HTML desde JSON
+                    const container = document.createElement('div');
+                    container.className = 'brute-from-detect-result';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'result-header';
+                    header.innerHTML = `<h3>Tabla de desplazamientos ${data.brute_start} - ${data.brute_end}</h3>`;
+                    
+                    const wrap = document.createElement('div');
+                    wrap.className = 'bruteforce-wrap';
+                    
+                    const table = document.createElement('table');
+                    table.className = 'bruteforce-table';
+                    
+                    // Encabezado
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `
+                        <tr>
+                            <th>Desplazamiento</th>
+                            <th>Texto descifrado</th>
+                            <th>Texto normal</th>
+                            <th>Contiene "punto/puntos"</th>
+                        </tr>
+                    `;
+                    table.appendChild(thead);
+                    
+                    // Cuerpo
+                    const tbody = document.createElement('tbody');
+                    data.brute_rows.forEach(row => {
+                        const tr = document.createElement('tr');
+                        if (row.has_focus_word) tr.className = 'focus-word-row';
+                        
+                        tr.innerHTML = `
+                            <td>${row.shift}</td>
+                            <td class="${row.likely_plain ? 'likely-plain' : ''}">${escapeHtml(row.decrypted)}</td>
+                            <td>${row.likely_plain ? `Si (${row.hits} coincidencias)` : 'No'}</td>
+                            <td>${row.has_focus_word ? `Si (${row.focus_hits})` : 'No'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    
+                    wrap.appendChild(table);
+                    container.appendChild(header);
+                    container.appendChild(wrap);
+                    
+                    // Insertar en la página
+                    const detectActions = bruteForm.closest('.detect-actions');
+                    const parent = detectActions.parentElement;
+                    parent.appendChild(container);
+
+                    bruteBtn.textContent = '✓ Tabla agregada';
+                    setTimeout(() => {
+                        bruteBtn.disabled = false;
+                        bruteBtn.textContent = `Probar ${charsetSize} desplazamientos`;
+                    }, 1500);
+                } catch (error) {
+                    console.error('Error:', error);
+                    bruteBtn.textContent = `✗ ${error.message}`;
+                    bruteBtn.disabled = false;
+                    setTimeout(() => {
+                        bruteBtn.textContent = `Probar ${formData.get('charset').length} desplazamientos`;
+                    }, 2500);
+                }
+            });
+        }
+        
+        // Función para escapar HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>

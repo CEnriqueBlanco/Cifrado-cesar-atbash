@@ -37,6 +37,8 @@ Ambos usan un **conjunto de caracteres configurable** por el usuario (por defect
 
 - Selecciona el módulo: `César` o `Atbash`.
 - Selecciona operación: `Cifrar` o `Descifrar`.
+- También puedes usar `Probar 200 desplazamientos` para ver 200 descifrados posibles de César.
+- La opción `Identificar cifrado` hace un análisis heurístico para sugerir si el texto parece César o Atbash.
 - Define el conjunto de caracteres (o usa el botón de ASCII imprimible).
 - Escribe el texto y presiona **Procesar**.
 
