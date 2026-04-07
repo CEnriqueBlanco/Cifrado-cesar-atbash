@@ -58,6 +58,7 @@
                     <textarea id="text" name="text" rows="11" placeholder="Escribe o pega aqui tu texto...">{{ text }}</textarea>
                 </div>
                 <button type="submit" class="primary">Procesar</button>
+                <small class="shortcut-help">Atajos: 1 limpia entrada, 2 pega selección/portapapeles, 3 enfoca entrada, 4 procesa formulario.</small>
             </section>
         </form>
 
@@ -227,6 +228,7 @@
         const useAsInputButton = document.getElementById('use-as-input');
         const printableAsciiData = document.getElementById('printable-ascii-data');
         const printableAscii = printableAsciiData ? JSON.parse(printableAsciiData.textContent) : '';
+        const mainForm = document.querySelector('form.panel.app-grid');
 
         // NEX-13
         function toggleShiftInput() {
@@ -386,6 +388,68 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // NEX-17 - Atajos de teclado globales
+        // 1: limpiar entrada
+        // 2: pegar selección actual (o portapapeles si no hay selección)
+        // 3: enfocar entrada
+        function isEditableTarget(target) {
+            if (!target) return false;
+            const tag = target.tagName;
+            return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+        }
+
+        document.addEventListener('keydown', async (event) => {
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+            if (event.key === '4') {
+                event.preventDefault();
+                if (mainForm) {
+                    if (typeof mainForm.requestSubmit === 'function') {
+                        mainForm.requestSubmit();
+                    } else {
+                        mainForm.submit();
+                    }
+                }
+                return;
+            }
+
+            if (!textInput) return;
+            if (isEditableTarget(event.target)) return;
+
+            if (event.key === '3') {
+                event.preventDefault();
+                textInput.focus();
+                textInput.setSelectionRange(textInput.value.length, textInput.value.length);
+                return;
+            }
+
+            if (event.key === '1') {
+                event.preventDefault();
+                textInput.value = '';
+                textInput.focus();
+                return;
+            }
+
+            if (event.key === '2') {
+                event.preventDefault();
+                let selectedText = window.getSelection ? window.getSelection().toString() : '';
+                selectedText = selectedText || '';
+
+                if (!selectedText.trim()) {
+                    try {
+                        selectedText = await navigator.clipboard.readText();
+                    } catch (_) {
+                        selectedText = '';
+                    }
+                }
+
+                if (selectedText) {
+                    textInput.value = selectedText;
+                    textInput.focus();
+                }
+            }
+        });
     </script>
 </body>
 </html>

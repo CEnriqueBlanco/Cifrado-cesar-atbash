@@ -134,6 +134,13 @@ button.primary {
     background: linear-gradient(120deg, #7b2335, #a63a51, #c25d71);
 }
 
+.shortcut-help {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-soft);
+    font-size: 0.84rem;
+}
+
 button.secondary {
     color: #f7ece5;
     background: linear-gradient(120deg, #5a171f, #7c2a3a);
