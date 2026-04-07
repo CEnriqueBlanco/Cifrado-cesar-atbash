@@ -44,15 +44,3 @@ Ambos usan un **conjunto de caracteres configurable** por el usuario (por defect
 
 > Nota: Si un carácter del texto no está en el conjunto definido, se deja sin cambios.
 
-## Despliegue en Render
-
-1. Sube el contenido de esta carpeta a un repositorio de GitHub.
-2. En Render, elige **New +** → **Blueprint** y conecta ese repositorio.
-3. Render detectará `render.yaml` automáticamente.
-4. Espera a que termine el build y abre la URL pública del servicio.
-
-Si prefieres crear el servicio manualmente en Render:
-
-- Environment: `Python`
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn app:app`
